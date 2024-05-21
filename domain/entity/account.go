@@ -3,7 +3,14 @@ package entity
 import (
 	"fmt"
 	"hash"
+	"os"
 	"time"
+
+	"github.com/golang-jwt/jwt"
+)
+
+const (
+	JWT_SECRET_KEY = "JWT_SECRET_KEY"
 )
 
 type Account struct {
@@ -36,14 +43,14 @@ func (a Account) IsValid() (bool, error) {
 
 }
 
-func (a *Account) Transfer(amount int, destination *Account) (Transfer, error) {
+func (a *Account) TransferTo(destination *Account, amount int) (Transfer, error) {
 
 	if a.Balance < amount {
 		return Transfer{}, fmt.Errorf("Cannot create transfer because insuficiend funds. Account Balance: %d, Transfer amount: %d", a.Balance, amount)
 	}
 
 	// Temporary ID data just for understanding
-	transfer := NewTransfer(1, a.ID, destination.ID, amount, time.Now())
+	transfer := NewTransfer(-1, a.ID, destination.ID, amount, time.Now())
 
 	valid, err := transfer.IsValid()
 	if !valid {
@@ -55,4 +62,22 @@ func (a *Account) Transfer(amount int, destination *Account) (Transfer, error) {
 	destination.Balance += amount
 
 	return *transfer, nil
+}
+
+func (a Account) GenerateToken() (string, error) {
+	secret := os.Getenv(JWT_SECRET_KEY)
+
+	claims := jwt.MapClaims{
+		"id":  a.ID,
+		"exp": time.Now().Add(time.Hour * 24).Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	tokenString, err := token.SignedString([]byte(secret))
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
 }

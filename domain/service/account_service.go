@@ -1,6 +1,9 @@
 package service
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"fmt"
 	"hash"
 	"time"
 
@@ -10,8 +13,9 @@ import (
 
 type AccountRepository interface {
 	ReadAll() []entity.Account
-	ReadById(id int) entity.Account
-	Create(id int, name string, cpf string, secret hash.Hash, balance int, createdAt time.Time) entity.Account
+	ReadByID(id int) *entity.Account
+	ReadByCPF(cpf string) *entity.Account
+	Create(name string, cpf string, secret hash.Hash, balance int) entity.Account
 }
 
 type AccountService struct {
@@ -44,28 +48,63 @@ func (a AccountService) ReadAccounts() []dto.ReadAccountOutputDTO {
 }
 
 func (a AccountService) ReadAccountBalance(input dto.ReadAccountBalanceInputDTO) dto.ReadAccountBalanceOutputDTO {
-	account := a.Repo.ReadById(input.ID)
+	account := a.Repo.ReadByID(input.ID)
 
-	return dto.ReadAccountBalanceOutputDTO{ID: account.ID}
+	return dto.ReadAccountBalanceOutputDTO{Balance: account.Balance}
 }
 
 func (a AccountService) CreateAccount(input dto.CreateAccountInputDTO) error {
 
-	account := entity.Account{
-		ID:        input.ID,
-		Name:      input.Name,
-		CPF:       input.CPF,
-		Secret:    input.Secret,
-		Balance:   input.Balance,
-		CreatedAt: input.CreatedAt,
-	}
+	hash := hashSecret(input.Secret)
+
+	account := entity.NewAccount(
+		-1,
+		input.Balance,
+		input.Name,
+		input.CPF,
+		hash,
+		time.Now().UTC(),
+	)
 
 	valid, err := account.IsValid()
 	if !valid {
 		return err
 	}
 
-	_ = a.Repo.Create(input.ID, input.Name, input.CPF, input.Secret, input.Balance, input.CreatedAt)
+	_ = a.Repo.Create(input.Name, input.CPF, hash, input.Balance)
 
 	return nil
+}
+
+func (a AccountService) Authenticate(cpf, secret string) (string, error) {
+
+	account := a.Repo.ReadByCPF(cpf)
+	if account == nil {
+		return "", fmt.Errorf("Failed to authenticate. Cannot find an account with the credentials provided")
+	}
+
+	// Checking secrets.
+	isCorrectSecret := checkSecret(secret, account.Secret)
+	if !isCorrectSecret {
+		return "", fmt.Errorf("Failed to authenticate. Invalid secret provided!")
+	}
+
+	token, err := account.GenerateToken()
+	if err != nil {
+		return "", fmt.Errorf("Failed to authenticate. Internal server error while generating your token!")
+	}
+
+	return token, nil
+}
+
+func hashSecret(secret string) (hash hash.Hash) {
+	hash = sha256.New()
+	hash.Write([]byte(secret))
+
+	return
+}
+
+func checkSecret(secret string, hash hash.Hash) bool {
+	newHash := hashSecret(secret)
+	return bytes.Equal(newHash.Sum(nil), hash.Sum(nil))
 }
