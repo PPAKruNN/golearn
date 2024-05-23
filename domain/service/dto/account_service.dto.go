@@ -26,3 +26,12 @@ type CreateAccountInputDTO struct {
 	Secret  string `json:"secret"`
 	Balance int    `json:"balance"`
 }
+
+type LoginInputDTO struct {
+	CPF    string `json:"cpf"`
+	Secret string `json:"secret"`
+}
+
+type LoginOutputDTO struct {
+	Token string `json:"token"`
+}

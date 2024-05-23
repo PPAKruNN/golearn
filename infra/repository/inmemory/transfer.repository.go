@@ -17,7 +17,7 @@ func NewTransferRepository() *TransferRepository {
 
 }
 
-func (r TransferRepository) ReadTransfersByAccountID(id int) []entity.Transfer {
+func (r *TransferRepository) ReadTransfersByAccountID(id int) []entity.Transfer {
 
 	var transfers []entity.Transfer
 

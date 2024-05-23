@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/PPAKruNN/golearn/domain/entity"
 	"github.com/PPAKruNN/golearn/domain/service/dto"
@@ -44,30 +45,30 @@ func (t TransferService) ReadTransfersByAccount(accountId int) []dto.ReadTransfe
 	return parsedTransfer
 }
 
-func (t *TransferService) CreateTransfer(input dto.CreateTrasnferInputDTO) error {
+func (t *TransferService) CreateTransfer(input dto.CreateTrasnferInputDTO) (int, error) {
 
 	// FIXME: Remove this 2 queries and turn it into one.
 	origin := t.AccountRepo.ReadByID(input.AccountOriginID)
 	if origin == nil {
-		return fmt.Errorf("Could not find the origin account!")
+		return http.StatusNotFound, fmt.Errorf("Could not find the origin account!")
 	}
 	destination := t.AccountRepo.ReadByID(input.AccountDestinationID)
 	if destination == nil {
-		return fmt.Errorf("Could not find the destination account!")
+		return http.StatusNotFound, fmt.Errorf("Could not find the destination account!")
 	}
 
 	transfer, err := origin.TransferTo(destination, input.Amount)
 	if err != nil {
-		return err
+		return http.StatusBadRequest, err
 	}
 
-	persistedTransfer := t.TransferRepo.CreateTransfer(transfer.AccountDestinationID, transfer.AccountDestinationID, transfer.Amount)
+	persistedTransfer := t.TransferRepo.CreateTransfer(transfer.AccountOriginID, transfer.AccountDestinationID, transfer.Amount)
 
 	// FIXME: Create better error message.
 	if persistedTransfer == nil {
-		return fmt.Errorf("Error while creating transfer. Internal server error")
+		return http.StatusInternalServerError, fmt.Errorf("Error while creating transfer. Internal server error")
 	}
 
-	return nil
+	return http.StatusCreated, nil
 
 }

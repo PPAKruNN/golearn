@@ -19,11 +19,12 @@ type AccountRepository interface {
 }
 
 type AccountService struct {
-	Repo AccountRepository
+	Repo     AccountRepository
+	AuthRepo AuthRepository
 }
 
-func NewAccountService(repo AccountRepository) *AccountService {
-	return &AccountService{Repo: repo}
+func NewAccountService(repo AccountRepository, authRepository AuthRepository) *AccountService {
+	return &AccountService{Repo: repo, AuthRepo: authRepository}
 }
 
 func (a AccountService) ReadAccounts() []dto.ReadAccountOutputDTO {
@@ -49,6 +50,10 @@ func (a AccountService) ReadAccounts() []dto.ReadAccountOutputDTO {
 
 func (a AccountService) ReadAccountBalance(input dto.ReadAccountBalanceInputDTO) dto.ReadAccountBalanceOutputDTO {
 	account := a.Repo.ReadByID(input.ID)
+
+	if account == nil {
+		return dto.ReadAccountBalanceOutputDTO{Balance: -1}
+	}
 
 	return dto.ReadAccountBalanceOutputDTO{Balance: account.Balance}
 }
@@ -76,25 +81,21 @@ func (a AccountService) CreateAccount(input dto.CreateAccountInputDTO) error {
 	return nil
 }
 
-func (a AccountService) Authenticate(cpf, secret string) (string, error) {
+func (a AccountService) Authenticate(cpf, secret string) (int, error) {
 
 	account := a.Repo.ReadByCPF(cpf)
 	if account == nil {
-		return "", fmt.Errorf("Failed to authenticate. Cannot find an account with the credentials provided")
+		return 0, fmt.Errorf("Failed to authenticate. Cannot find an account with the credentials provided")
 	}
 
 	// Checking secrets.
 	isCorrectSecret := checkSecret(secret, account.Secret)
 	if !isCorrectSecret {
-		return "", fmt.Errorf("Failed to authenticate. Invalid secret provided!")
+		return 0, fmt.Errorf("Failed to authenticate. Invalid secret provided!")
 	}
 
-	token, err := account.GenerateToken()
-	if err != nil {
-		return "", fmt.Errorf("Failed to authenticate. Internal server error while generating your token!")
-	}
+	return account.ID, nil
 
-	return token, nil
 }
 
 func hashSecret(secret string) (hash hash.Hash) {

@@ -3,10 +3,7 @@ package entity
 import (
 	"fmt"
 	"hash"
-	"os"
 	"time"
-
-	"github.com/golang-jwt/jwt"
 )
 
 const (
@@ -62,22 +59,4 @@ func (a *Account) TransferTo(destination *Account, amount int) (Transfer, error)
 	destination.Balance += amount
 
 	return *transfer, nil
-}
-
-func (a Account) GenerateToken() (string, error) {
-	secret := os.Getenv(JWT_SECRET_KEY)
-
-	claims := jwt.MapClaims{
-		"id":  a.ID,
-		"exp": time.Now().Add(time.Hour * 24).Unix(),
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	tokenString, err := token.SignedString([]byte(secret))
-	if err != nil {
-		return "", err
-	}
-
-	return tokenString, nil
 }
