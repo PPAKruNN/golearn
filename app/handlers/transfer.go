@@ -7,6 +7,8 @@ import (
 
 	"github.com/PPAKruNN/golearn/domain/service"
 	"github.com/PPAKruNN/golearn/domain/service/dto"
+
+	"github.com/rs/zerolog/log"
 )
 
 type TransferServer struct {
@@ -15,7 +17,6 @@ type TransferServer struct {
 }
 
 func NewTransferServer(transferService service.TransferService, authService service.AuthService) *TransferServer {
-
 	return &TransferServer{
 		TransferService: transferService,
 		AuthService:     authService,
@@ -74,7 +75,7 @@ func (s *TransferServer) authorizeAccount(authorization string) (int, error) {
 
 func (s *TransferServer) ReadTransfers(w http.ResponseWriter, r *http.Request) {
 
-	fmt.Printf("Chamou read Transfer! \n")
+	log.Info().Str("Method", r.Method).Str("Path", r.URL.String()).Msg("Called endpoint ReadTransfers!")
 
 	// Authorization
 	authorization := r.Header.Get("Authorization")
@@ -82,18 +83,30 @@ func (s *TransferServer) ReadTransfers(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(err.Error())
+
+		log.Info().
+			Str("Method", r.Method).
+			Str("Path", r.URL.String()).
+			Int("Status Code", http.StatusUnauthorized).
+			Err(err).
+			Msg("Failed authorizing request!")
 		return
 	}
 
 	transfers := s.TransferService.ReadTransfersByAccount(accountId)
 
 	json.NewEncoder(w).Encode(transfers)
+	log.Info().
+		Str("Method", r.Method).
+		Str("Path", r.URL.String()).
+		Int("Status Code", http.StatusOK).
+		Msg("")
 
 }
 
 func (s *TransferServer) CreateTransfer(w http.ResponseWriter, r *http.Request) {
 
-	fmt.Printf("Chamou create Transfer! \n")
+	log.Info().Str("Method", r.Method).Str("Path", r.URL.String()).Msg("Called endpoint CreateTransfer!")
 
 	// Authorization
 	authorization := r.Header.Get("Authorization")
@@ -101,6 +114,13 @@ func (s *TransferServer) CreateTransfer(w http.ResponseWriter, r *http.Request) 
 	if authErr != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(authErr.Error())
+
+		log.Info().
+			Str("Method", r.Method).
+			Str("Path", r.URL.String()).
+			Int("Status Code", http.StatusUnauthorized).
+			Err(authErr).
+			Msg("Failed authorizing request!")
 		return
 	}
 
@@ -109,20 +129,48 @@ func (s *TransferServer) CreateTransfer(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		json.NewEncoder(w).Encode(err.Error())
+
+		log.Info().
+			Str("Method", r.Method).
+			Str("Path", r.URL.String()).
+			Int("Status Code", http.StatusUnprocessableEntity).
+			Err(err).
+			Msg("Failed processing body!")
 		return
 	}
 
 	// FIX: DTO should not ask for OriginID on json.
 	// Temporary solution: Force origin to be accountId.
-	input.AccountOriginID = accountId
+	if input.AccountOriginID != accountId {
+		log.Warn().
+			Str("Method", r.Method).
+			Str("Path", r.URL.String()).
+			Interface("UserSentInput", input).
+			Int("NewCorrectedOriginID", accountId).
+			Msg("Manually correcting an transfer originID to a accountID obtained using account authentication!")
+
+		input.AccountOriginID = accountId
+	}
 
 	statusCode, transferErr := s.TransferService.CreateTransfer(input)
 	if transferErr != nil {
 		w.WriteHeader(statusCode)
 		json.NewEncoder(w).Encode(transferErr.Error())
+		log.Info().
+			Str("Method", r.Method).
+			Str("Path", r.URL.String()).
+			Int("Status Code", statusCode).
+			Err(transferErr).
+			Msg("Failed creating a transfer!")
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
 
+	log.Info().
+		Str("Method", r.Method).
+		Str("Path", r.URL.String()).
+		Interface("Account", input).
+		Int("Status Code", http.StatusCreated).
+		Msg("")
 }

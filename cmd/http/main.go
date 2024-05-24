@@ -8,7 +8,11 @@ import (
 	"github.com/PPAKruNN/golearn/app/handlers"
 	"github.com/PPAKruNN/golearn/domain/service"
 	"github.com/PPAKruNN/golearn/infra/repository/inmemory"
+	"github.com/rs/zerolog"
+	logger "github.com/rs/zerolog/log"
 )
+
+const PORT = ":5000"
 
 func main() {
 	// Repository instances
@@ -25,12 +29,16 @@ func main() {
 	accountServer := handlers.NewAccountServer(transferService, accountService, authService)
 	transferServer := handlers.NewTransferServer(transferService, authService)
 
+	// Router
 	router := http.NewServeMux()
 	router.Handle("/accounts/", accountServer.ServeHTTP())
 	router.Handle("/transfers/", transferServer.ServeHTTP())
 	router.Handle("/login", http.HandlerFunc(accountServer.Login))
 
-	fmt.Println("Running Server!")
-	log.Fatal(http.ListenAndServe(":5000", router))
+	// Logging
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	logger.Info().Msg(fmt.Sprintf("Running server on port %s", PORT))
+
+	log.Fatal(http.ListenAndServe(PORT, router))
 
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/PPAKruNN/golearn/domain/service"
 	"github.com/PPAKruNN/golearn/domain/service/dto"
+	"github.com/rs/zerolog/log"
 )
 
 type AccountServer struct {
@@ -59,12 +60,24 @@ func (s *AccountServer) accountHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *AccountServer) ReadAccounts(w http.ResponseWriter, r *http.Request) {
+
+	log.Info().Str("Method", r.Method).Str("Path", r.URL.String()).Msg("Called endpoint ReadAccounts!")
+
 	accounts := s.AccountService.ReadAccounts()
 
 	json.NewEncoder(w).Encode(accounts)
+
+	// INFO: I think it is not worth to put accounts array in the log.
+	log.Info().
+		Str("Method", r.Method).
+		Str("Path", r.URL.String()).
+		Int("Status Code", http.StatusOK).
+		Msg("")
 }
 
 func (s *AccountServer) ReadAccountBalance(w http.ResponseWriter, r *http.Request) {
+
+	log.Info().Str("Method", r.Method).Str("Path", r.URL.String()).Msg("Called endpoint ReadAccountBalance!")
 
 	// Getting ID
 	var id int
@@ -78,47 +91,98 @@ func (s *AccountServer) ReadAccountBalance(w http.ResponseWriter, r *http.Reques
 
 	if balance.Balance == -1 {
 		w.WriteHeader(http.StatusNotFound)
+		log.Info().
+			Str("Method", r.Method).
+			Str("Path", r.URL.String()).
+			Int("Status Code", http.StatusNotFound).
+			Interface("Account", input).
+			Msg("Could not read balance from account!")
 	} else {
 		json.NewEncoder(w).Encode(balance)
+
+		log.Info().
+			Str("Method", r.Method).
+			Str("Path", r.URL.String()).
+			Int("Status Code", http.StatusOK).
+			Interface("Account", input).
+			Interface("Response", balance).
+			Msg("")
 	}
 
 }
 
 func (s *AccountServer) CreateAccount(w http.ResponseWriter, r *http.Request) {
 
+	log.Info().Str("Method", r.Method).Str("Path", r.URL.String()).Msg("Called endpoint CreateAccount!")
+
 	var accountDTO dto.CreateAccountInputDTO
 
 	err := json.NewDecoder(r.Body).Decode(&accountDTO)
 	if err != nil {
 		w.WriteHeader(http.StatusUnprocessableEntity)
+		log.Info().
+			Str("Method", r.Method).
+			Str("Path", r.URL.String()).
+			Int("Status Code", http.StatusUnprocessableEntity).
+			Err(err).
+			Interface("Account", accountDTO).
+			Msg("Failed processing body!")
 		return
 	}
 
 	err = s.AccountService.CreateAccount(accountDTO)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Printf("Error while creating account! %+v", accountDTO)
+		log.Error().
+			Str("Method", r.Method).
+			Str("Path", r.URL.String()).
+			Int("Status Code", http.StatusInternalServerError).
+			Err(err).
+			Interface("Account", accountDTO).
+			Msg("Could not create account!")
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
+	log.Info().
+		Str("Method", r.Method).
+		Str("Path", r.URL.String()).
+		Int("Status Code", http.StatusCreated).
+		Msg("")
 
 }
 
 func (s *AccountServer) Login(w http.ResponseWriter, r *http.Request) {
+
+	log.Info().Str("Method", r.Method).Str("Path", r.URL.String()).Msg("Called endpoint Login!")
 
 	var accountDTO dto.LoginInputDTO
 
 	err := json.NewDecoder(r.Body).Decode(&accountDTO)
 	if err != nil {
 		w.WriteHeader(http.StatusUnprocessableEntity)
+
+		log.Info().
+			Str("Method", r.Method).
+			Str("Path", r.URL.String()).
+			Int("Status Code", http.StatusUnprocessableEntity).
+			Err(err).
+			Interface("Account", accountDTO).
+			Msg("Failed processing body!")
 		return
 	}
 
 	id, err := s.AccountService.Authenticate(accountDTO.CPF, accountDTO.Secret)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
-		fmt.Printf("Account not found! %+v\n", accountDTO)
+
+		log.Info().
+			Str("Method", r.Method).
+			Str("Path", r.URL.String()).
+			Int("Status Code", http.StatusNotFound).
+			Err(err).
+			Interface("Account", accountDTO).
+			Msg("Account not found!")
 		return
 	}
 
@@ -130,5 +194,11 @@ func (s *AccountServer) Login(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(output)
+
+	log.Info().
+		Str("Method", r.Method).
+		Str("Path", r.URL.String()).
+		Int("Status Code", http.StatusOK).
+		Msg("")
 
 }
