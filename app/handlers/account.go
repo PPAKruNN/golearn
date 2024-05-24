@@ -27,8 +27,8 @@ func NewAccountServer(transferService service.TransferService, accountService se
 func (s *AccountServer) ServeHTTP() *http.ServeMux {
 
 	router := http.NewServeMux()
-	router.Handle("/accounts/:id/balance", http.HandlerFunc(s.ReadAccountBalance))
-	router.Handle("/accounts", http.HandlerFunc(s.accountHandler))
+	router.Handle("/accounts/{id}/balance", http.HandlerFunc(s.ReadAccountBalance))
+	router.Handle("/accounts/", http.HandlerFunc(s.accountHandler))
 
 	return router
 
@@ -53,6 +53,7 @@ func (s *AccountServer) accountHandler(w http.ResponseWriter, r *http.Request) {
 
 	default:
 		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode("Cannot " + r.Method + " " + r.URL.String())
 	}
 
 }

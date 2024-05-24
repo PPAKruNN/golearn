@@ -26,8 +26,9 @@ func main() {
 	transferServer := handlers.NewTransferServer(transferService, authService)
 
 	router := http.NewServeMux()
-	router.Handle("/", accountServer.ServeHTTP())
-	router.Handle("/", transferServer.ServeHTTP())
+	router.Handle("/accounts/", accountServer.ServeHTTP())
+	router.Handle("/transfers/", transferServer.ServeHTTP())
+	router.Handle("/login", http.HandlerFunc(accountServer.Login))
 
 	fmt.Println("Running Server!")
 	log.Fatal(http.ListenAndServe(":5000", router))

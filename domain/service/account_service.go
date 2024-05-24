@@ -30,7 +30,7 @@ func NewAccountService(repo AccountRepository, authRepository AuthRepository) *A
 func (a AccountService) ReadAccounts() []dto.ReadAccountOutputDTO {
 
 	accounts := a.Repo.ReadAll()
-	var mapAccounts []dto.ReadAccountOutputDTO
+	mapAccounts := []dto.ReadAccountOutputDTO{}
 
 	for _, account := range accounts {
 

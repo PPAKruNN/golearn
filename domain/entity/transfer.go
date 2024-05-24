@@ -30,7 +30,7 @@ func (t Transfer) IsValid() (bool, error) {
 	}
 
 	if t.AccountDestinationID == t.AccountOriginID {
-		return false, fmt.Errorf("Transfer cannot have itself as destination. Transfer ID: %d", t.ID)
+		return false, fmt.Errorf("Transfer cannot have itself as destination.")
 	}
 
 	return true, nil

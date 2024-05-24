@@ -25,8 +25,7 @@ func NewTransferServer(transferService service.TransferService, authService serv
 func (s *TransferServer) ServeHTTP() *http.ServeMux {
 
 	router := http.NewServeMux()
-	// router.Handle("/transfers", http.HandlerFunc()) // get
-	// router.Handle("/transfers", http.HandlerFunc()) // post
+	router.Handle("/transfers/", http.HandlerFunc(s.transferHandler))
 
 	return router
 
@@ -36,16 +35,19 @@ func (s *TransferServer) ServeHTTP() *http.ServeMux {
 func (s *TransferServer) transferHandler(w http.ResponseWriter, r *http.Request) {
 
 	method := r.Method
+
+	fmt.Print(method)
+
 	switch method {
 	case http.MethodPost:
-		// s.CreateAccount(w, r)
+		s.CreateTransfer(w, r)
 		break
 	case http.MethodGet:
-		// s.ReadAccounts(w, r)
+		s.ReadTransfers(w, r)
 		break
 
 	case "":
-		// s.ReadAccounts(w, r)
+		s.ReadTransfers(w, r)
 		break
 
 	default:
@@ -72,12 +74,15 @@ func (s *TransferServer) authorizeAccount(authorization string) (int, error) {
 
 func (s *TransferServer) ReadTransfers(w http.ResponseWriter, r *http.Request) {
 
+	fmt.Printf("Chamou read Transfer! \n")
+
 	// Authorization
 	authorization := r.Header.Get("Authorization")
 	accountId, err := s.authorizeAccount(authorization)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(err.Error())
+		return
 	}
 
 	transfers := s.TransferService.ReadTransfersByAccount(accountId)
@@ -88,19 +93,23 @@ func (s *TransferServer) ReadTransfers(w http.ResponseWriter, r *http.Request) {
 
 func (s *TransferServer) CreateTransfer(w http.ResponseWriter, r *http.Request) {
 
+	fmt.Printf("Chamou create Transfer! \n")
+
 	// Authorization
 	authorization := r.Header.Get("Authorization")
 	accountId, authErr := s.authorizeAccount(authorization)
 	if authErr != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(authErr.Error())
+		return
 	}
 
 	var input dto.CreateTrasnferInputDTO
 	err := json.NewDecoder(r.Body).Decode(&input)
 	if err != nil {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		json.NewEncoder(w).Encode(authErr.Error())
+		json.NewEncoder(w).Encode(err.Error())
+		return
 	}
 
 	// FIX: DTO should not ask for OriginID on json.
@@ -111,6 +120,7 @@ func (s *TransferServer) CreateTransfer(w http.ResponseWriter, r *http.Request) 
 	if transferErr != nil {
 		w.WriteHeader(statusCode)
 		json.NewEncoder(w).Encode(transferErr.Error())
+		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
