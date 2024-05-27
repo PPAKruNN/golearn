@@ -6,11 +6,12 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/PPAKruNN/golearn/domain/service"
 	"github.com/PPAKruNN/golearn/domain/service/dto"
-	"github.com/PPAKruNN/golearn/infra/repository/inmemory"
+	"github.com/PPAKruNN/golearn/infra/repository/indisk"
 	"github.com/google/uuid"
 )
 
@@ -36,9 +37,16 @@ func createMockAccount(AccountService *service.AccountService) *dto.CreateAccoun
 
 func createRepoAndServices() (TransferService *service.TransferService, AccountService *service.AccountService, AuthService *service.AuthService) {
 
-	transferRepo := inmemory.NewTransferRepository()
-	authRepo := inmemory.NewAuthRepository()
-	accountRepo := inmemory.NewAccountRepository()
+	dir, err := os.Getwd()
+	if err != nil {
+		panic("Failed to get current directory.")
+	}
+
+	transferRepo := indisk.NewTransferRepository(dir)
+	authRepo := indisk.NewAuthRepository(dir)
+	accountRepo := indisk.NewAccountRepository(dir)
+
+	accountRepo.Reset()
 
 	TransferService = service.NewTransferService(transferRepo, accountRepo)
 	AccountService = service.NewAccountService(accountRepo, authRepo)
@@ -117,6 +125,10 @@ func TestGETAccounts(t *testing.T) {
 
 	t.Run("Should return empty array when no account is created", func(t *testing.T) {
 
+		t.Cleanup(func() {
+			clearDatabase(server)
+		})
+
 		request, response := createHttpRequestAndResponse(http.MethodGet, "/accounts", nil)
 		server.ReadAccounts(response, request)
 
@@ -125,6 +137,10 @@ func TestGETAccounts(t *testing.T) {
 	})
 
 	t.Run("Should return accounts when a there is any registered account", func(t *testing.T) {
+
+		t.Cleanup(func() {
+			clearDatabase(server)
+		})
 
 		// FIXME: ID hardcoded não me parece uma boa ideia. Encontre uma alternativa para sumir com isso.
 		mockAccount := createMockAccount(AccountService)
@@ -149,6 +165,10 @@ func TestGetBalance(t *testing.T) {
 
 	t.Run("Should return account list", func(t *testing.T) {
 
+		t.Cleanup(func() {
+			clearDatabase(server)
+		})
+
 		mockAccount := createMockAccount(AccountService)
 
 		request, response := createHttpRequestAndResponse(http.MethodGet, "/accounts/0/balance", nil)
@@ -159,6 +179,11 @@ func TestGetBalance(t *testing.T) {
 	})
 
 	t.Run("Should return 404 if account is not found!", func(t *testing.T) {
+
+		t.Cleanup(func() {
+			clearDatabase(server)
+		})
+
 		request, response := createHttpRequestAndResponse(http.MethodGet, "/accounts/10000/balance", nil)
 		server.ReadAccountBalance(response, request)
 
@@ -198,6 +223,10 @@ func TestCreateAccount(t *testing.T) {
 	_, AccountService, _, server := createHTTPAccountServer()
 
 	t.Run("Should create a account", func(t *testing.T) {
+
+		t.Cleanup(func() {
+			clearDatabase(server)
+		})
 
 		// Arrange
 		input := dto.CreateAccountInputDTO{
@@ -244,6 +273,10 @@ func TestLogin(t *testing.T) {
 
 	t.Run("Should be able to login", func(t *testing.T) {
 
+		t.Cleanup(func() {
+			AccountService.Repo.Reset()
+		})
+
 		mockedAccount := createMockAccount(AccountService)
 
 		inputDTO := dto.LoginInputDTO{
@@ -271,4 +304,10 @@ func TestLogin(t *testing.T) {
 		}
 
 	})
+}
+
+func clearDatabase(server *AccountServer) {
+	server.AccountService.Repo.Reset()
+	server.TransferService.TransferRepo.Reset()
+	server.AuthService.Repo.Reset()
 }

@@ -9,6 +9,7 @@ import (
 type AuthRepository interface {
 	RegisterToken(token string, accountId int)
 	DecodeToken(token string) (int, error)
+	Reset() error
 }
 
 type AuthService struct {

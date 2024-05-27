@@ -19,3 +19,8 @@ func (r AuthRepository) DecodeToken(token string) (int, error) {
 
 	return accountId, nil
 }
+
+func (r AuthRepository) Reset() error {
+	r.Auths = map[string]int{}
+	return nil
+}

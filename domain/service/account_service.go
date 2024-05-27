@@ -14,8 +14,10 @@ import (
 type AccountRepository interface {
 	ReadAll() []entity.Account
 	ReadByID(id int) *entity.Account
-	ReadByCPF(cpf string) *entity.Account
+	ReadHashByCPF(cpf string) (int, []byte)
 	Create(name string, cpf string, secret hash.Hash, balance int) entity.Account
+	Reset() error
+	UpdateBalance(id, balance int) *entity.Account
 }
 
 type AccountService struct {
@@ -83,18 +85,19 @@ func (a AccountService) CreateAccount(input dto.CreateAccountInputDTO) error {
 
 func (a AccountService) Authenticate(cpf, secret string) (int, error) {
 
-	account := a.Repo.ReadByCPF(cpf)
-	if account == nil {
+	id, foundSecret := a.Repo.ReadHashByCPF(cpf)
+
+	if foundSecret == nil {
 		return 0, fmt.Errorf("Failed to authenticate. Cannot find an account with the credentials provided")
 	}
 
 	// Checking secrets.
-	isCorrectSecret := checkSecret(secret, account.Secret)
+	isCorrectSecret := checkSecret(secret, foundSecret)
 	if !isCorrectSecret {
 		return 0, fmt.Errorf("Failed to authenticate. Invalid secret provided!")
 	}
 
-	return account.ID, nil
+	return id, nil
 
 }
 
@@ -105,7 +108,10 @@ func hashSecret(secret string) (hash hash.Hash) {
 	return
 }
 
-func checkSecret(secret string, hash hash.Hash) bool {
+func checkSecret(secret string, accSecret []byte) bool {
 	newHash := hashSecret(secret)
-	return bytes.Equal(newHash.Sum(nil), hash.Sum(nil))
+
+	fhash := newHash.Sum(nil)
+
+	return bytes.Equal(fhash, accSecret)
 }

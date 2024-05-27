@@ -31,15 +31,26 @@ func (r AccountRepository) ReadByID(id int) *entity.Account {
 	return nil
 }
 
-func (r AccountRepository) ReadByCPF(cpf string) *entity.Account {
-
+func (r AccountRepository) UpdateBalance(id int, balance int) *entity.Account {
 	for idx, acc := range r.Accounts {
-		if acc.CPF == cpf {
+		if acc.ID == id {
+			r.Accounts[idx].Balance = balance
 			return &r.Accounts[idx]
 		}
 	}
 
 	return nil
+}
+
+func (r AccountRepository) ReadHashByCPF(cpf string) (int, []byte) {
+
+	for _, acc := range r.Accounts {
+		if acc.CPF == cpf {
+			return acc.ID, acc.Secret.Sum(nil)
+		}
+	}
+
+	return 0, []byte{}
 }
 
 func (r *AccountRepository) Create(name string, cpf string, secret hash.Hash, balance int) entity.Account {
@@ -57,4 +68,9 @@ func (r *AccountRepository) Create(name string, cpf string, secret hash.Hash, ba
 
 	return newAccount
 
+}
+
+func (r *AccountRepository) Reset() error {
+	r.Accounts = []entity.Account{}
+	return nil
 }

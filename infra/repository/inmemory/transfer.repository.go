@@ -48,3 +48,8 @@ func (r *TransferRepository) CreateTransfer(accountOriginID, destinationOriginID
 	return &transfer
 
 }
+
+func (r *TransferRepository) Reset() error {
+	r.Transfers = []entity.Transfer{}
+	return nil
+}

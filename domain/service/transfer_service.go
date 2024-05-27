@@ -11,6 +11,7 @@ import (
 type TransferRepository interface {
 	ReadTransfersByAccountID(id int) []entity.Transfer
 	CreateTransfer(accountOriginID, destinationOriginID, amount int) *entity.Transfer
+	Reset() error
 }
 
 type TransferService struct {
@@ -62,6 +63,8 @@ func (t *TransferService) CreateTransfer(input dto.CreateTrasnferInputDTO) (int,
 		return http.StatusBadRequest, err
 	}
 
+	t.AccountRepo.UpdateBalance(origin.ID, origin.Balance)
+	t.AccountRepo.UpdateBalance(destination.ID, destination.Balance)
 	persistedTransfer := t.TransferRepo.CreateTransfer(transfer.AccountOriginID, transfer.AccountDestinationID, transfer.Amount)
 
 	// FIXME: Create better error message.
