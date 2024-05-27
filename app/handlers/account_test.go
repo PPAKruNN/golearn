@@ -11,6 +11,7 @@ import (
 
 	"github.com/PPAKruNN/golearn/domain/service"
 	"github.com/PPAKruNN/golearn/domain/service/dto"
+	"github.com/PPAKruNN/golearn/infra/repository/database"
 	"github.com/PPAKruNN/golearn/infra/repository/indisk"
 	"github.com/google/uuid"
 )
@@ -44,7 +45,7 @@ func createRepoAndServices() (TransferService *service.TransferService, AccountS
 
 	transferRepo := indisk.NewTransferRepository(dir)
 	authRepo := indisk.NewAuthRepository(dir)
-	accountRepo := indisk.NewAccountRepository(dir)
+	accountRepo := database.NewAccountRepository()
 
 	accountRepo.Reset()
 

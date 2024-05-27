@@ -9,6 +9,7 @@ import (
 
 	"github.com/PPAKruNN/golearn/app/handlers"
 	"github.com/PPAKruNN/golearn/domain/service"
+	"github.com/PPAKruNN/golearn/infra/repository/database"
 	"github.com/PPAKruNN/golearn/infra/repository/indisk"
 	"github.com/rs/zerolog"
 	logger "github.com/rs/zerolog/log"
@@ -23,16 +24,15 @@ func main() {
 	// Placing json files into folder database on current directory.
 	CURR_DIR, err := os.Getwd()
 	DATABASE_DIR := path.Join(CURR_DIR, "database")
-
 	os.Mkdir(DATABASE_DIR, 0755)
 
 	if err != nil {
-		panic("Uai")
+		panic("Error while getting current directory.")
 	}
 
 	// Repository instances
 	transferRepo := indisk.NewTransferRepository(DATABASE_DIR)
-	accountRepo := indisk.NewAccountRepository(DATABASE_DIR)
+	accountRepo := database.NewAccountRepository()
 	authRepo := indisk.NewAuthRepository(DATABASE_DIR)
 
 	// Services instances
