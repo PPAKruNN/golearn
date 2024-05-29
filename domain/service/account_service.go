@@ -12,12 +12,14 @@ import (
 )
 
 type AccountRepository interface {
-	ReadAll() []entity.Account
-	ReadByID(id int) *entity.Account
-	ReadHashByCPF(cpf string) (int, []byte)
-	Create(name string, cpf string, secret hash.Hash, balance int) entity.Account
+	Create(entity.Account) (entity.Account, error)
+	ReadAll() ([]entity.Account, error)
+	// FindByID(id int) (entity.Account, error)
+	ReadByID(id int) (entity.Account, error)
+	// FindHashByCPF(cpf string) (int, []byte, error)
+	ReadHashByCPF(cpf string) (int, []byte, error)
+	UpdateBalance(id, balance int) (entity.Account, error)
 	Reset() error
-	UpdateBalance(id, balance int) *entity.Account
 }
 
 type AccountService struct {
@@ -31,7 +33,10 @@ func NewAccountService(repo AccountRepository, authRepository AuthRepository) *A
 
 func (a AccountService) ReadAccounts() []dto.ReadAccountOutputDTO {
 
-	accounts := a.Repo.ReadAll()
+	accounts, err := a.Repo.ReadAll()
+	if err != nil {
+	}
+
 	mapAccounts := []dto.ReadAccountOutputDTO{}
 
 	for _, account := range accounts {
@@ -51,43 +56,47 @@ func (a AccountService) ReadAccounts() []dto.ReadAccountOutputDTO {
 }
 
 func (a AccountService) ReadAccountBalance(input dto.ReadAccountBalanceInputDTO) dto.ReadAccountBalanceOutputDTO {
-	account := a.Repo.ReadByID(input.ID)
+	account, err := a.Repo.ReadByID(input.ID)
 
-	if account == nil {
+	if err != nil {
 		return dto.ReadAccountBalanceOutputDTO{Balance: -1}
 	}
 
 	return dto.ReadAccountBalanceOutputDTO{Balance: account.Balance}
 }
 
-func (a AccountService) CreateAccount(input dto.CreateAccountInputDTO) error {
+func (a AccountService) CreateAccount(input dto.CreateAccountInputDTO) (entity.Account, error) {
 
 	hash := hashSecret(input.Secret)
 
 	account := entity.NewAccount(
-		-1,
+		0,
 		input.Balance,
 		input.Name,
 		input.CPF,
 		hash,
-		time.Now().UTC(),
+		time.Now(),
 	)
 
 	valid, err := account.IsValid()
 	if !valid {
-		return err
+		return entity.Account{}, err
 	}
 
-	_ = a.Repo.Create(input.Name, input.CPF, hash, input.Balance)
+	newAccount, err := a.Repo.Create(*account)
 
-	return nil
+	if err != nil {
+		return entity.Account{}, err
+	}
+
+	return newAccount, nil
 }
 
 func (a AccountService) Authenticate(cpf, secret string) (int, error) {
 
-	id, foundSecret := a.Repo.ReadHashByCPF(cpf)
+	id, foundSecret, err := a.Repo.ReadHashByCPF(cpf)
 
-	if foundSecret == nil {
+	if err != nil {
 		return 0, fmt.Errorf("Failed to authenticate. Cannot find an account with the credentials provided")
 	}
 

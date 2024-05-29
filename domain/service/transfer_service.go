@@ -49,22 +49,24 @@ func (t TransferService) ReadTransfersByAccount(accountId int) []dto.ReadTransfe
 func (t *TransferService) CreateTransfer(input dto.CreateTrasnferInputDTO) (int, error) {
 
 	// FIXME: Remove this 2 queries and turn it into one.
-	origin := t.AccountRepo.ReadByID(input.AccountOriginID)
-	if origin == nil {
-		return http.StatusNotFound, fmt.Errorf("Could not find the origin account!")
+	origin, err := t.AccountRepo.ReadByID(input.AccountOriginID)
+	if err != nil {
+		return http.StatusNotFound, fmt.Errorf("Could not find the origin account! Err: %v", err)
 	}
-	destination := t.AccountRepo.ReadByID(input.AccountDestinationID)
-	if destination == nil {
+
+	destination, err := t.AccountRepo.ReadByID(input.AccountDestinationID)
+	if err != nil {
 		return http.StatusNotFound, fmt.Errorf("Could not find the destination account!")
 	}
 
-	transfer, err := origin.TransferTo(destination, input.Amount)
+	transfer, err := origin.TransferTo(&destination, input.Amount)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
 
 	t.AccountRepo.UpdateBalance(origin.ID, origin.Balance)
 	t.AccountRepo.UpdateBalance(destination.ID, destination.Balance)
+
 	persistedTransfer := t.TransferRepo.CreateTransfer(transfer.AccountOriginID, transfer.AccountDestinationID, transfer.Amount)
 
 	// FIXME: Create better error message.
