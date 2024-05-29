@@ -1,0 +1,25 @@
+volumes:
+  devpgdata:
+
+services:
+  db:
+    image: postgres:latest
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - 5432:5432
+    volumes:
+      - devpgdata:/var/lib/postgresql/data
+
+  api:
+    depends_on:
+      - db
+    image: snjaypee/golearn:latest
+    build: .
+    environment:
+      GO_ENV: prod
+      DB_CONN_STRING: "postgres://postgres:postgres@golearn-db-1:5432/golearn?sslmode=disable"
+    ports:
+      - 5000:5000
