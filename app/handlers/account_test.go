@@ -2,17 +2,18 @@ package handlers
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
+	"github.com/PPAKruNN/golearn/domain/entity"
 	"github.com/PPAKruNN/golearn/domain/service"
 	"github.com/PPAKruNN/golearn/domain/service/dto"
 	"github.com/PPAKruNN/golearn/infra/repository/database"
-	"github.com/PPAKruNN/golearn/infra/repository/indisk"
 	"github.com/google/uuid"
 )
 
@@ -23,31 +24,43 @@ const (
 	MOCKED_BALANCE = 100
 )
 
-func createMockAccount(AccountService *service.AccountService) *dto.CreateAccountInputDTO {
-	accountDTO := dto.CreateAccountInputDTO{
+func createMockAccount(AccountService *service.AccountService) entity.Account {
+
+	secret := sha256.New()
+	_, err := secret.Write([]byte(MOCKED_SECRET))
+	if err != nil {
+		panic("Cannot create a hash of mock account secret!")
+	}
+
+	accountEntity := entity.Account{
 		Name:    MOCKED_NAME,
 		CPF:     MOCKED_CPF,
-		Secret:  MOCKED_SECRET,
+		Secret:  secret,
 		Balance: MOCKED_BALANCE,
 	}
 
-	AccountService.CreateAccount(accountDTO)
+	account, err := AccountService.Repo.Create(accountEntity)
+	if err != nil {
+		panic("Cannot create mock account! Err: " + err.Error())
+	}
 
-	return &accountDTO
+	return account
 }
 
 func createRepoAndServices() (TransferService *service.TransferService, AccountService *service.AccountService, AuthService *service.AuthService) {
 
-	dir, err := os.Getwd()
-	if err != nil {
-		panic("Failed to get current directory.")
-	}
+	// dir, err := os.Getwd()
+	// if err != nil {
+	// 	panic("Failed to get current directory.")
+	// }
 
-	transferRepo := indisk.NewTransferRepository(dir)
-	authRepo := indisk.NewAuthRepository(dir)
+	transferRepo := database.NewTransferRepository()
+	authRepo := database.NewAuthRepository()
 	accountRepo := database.NewAccountRepository()
 
 	accountRepo.Reset()
+	authRepo.Reset()
+	transferRepo.Reset()
 
 	TransferService = service.NewTransferService(transferRepo, accountRepo)
 	AccountService = service.NewAccountService(accountRepo, authRepo)
@@ -143,10 +156,9 @@ func TestGETAccounts(t *testing.T) {
 			clearDatabase(server)
 		})
 
-		// FIXME: ID hardcoded não me parece uma boa ideia. Encontre uma alternativa para sumir com isso.
 		mockAccount := createMockAccount(AccountService)
 		account := dto.ReadAccountOutputDTO{
-			ID:      0,
+			ID:      mockAccount.ID,
 			Name:    mockAccount.Name,
 			CPF:     mockAccount.CPF,
 			Balance: mockAccount.Balance,
@@ -172,7 +184,9 @@ func TestGetBalance(t *testing.T) {
 
 		mockAccount := createMockAccount(AccountService)
 
-		request, response := createHttpRequestAndResponse(http.MethodGet, "/accounts/0/balance", nil)
+		fmt.Print(mockAccount.ID)
+
+		request, response := createHttpRequestAndResponse(http.MethodGet, fmt.Sprintf("/accounts/%d/balance", mockAccount.ID), nil)
 		server.ReadAccountBalance(response, request)
 
 		assertStatusCode(t, response, http.StatusOK)
@@ -185,7 +199,8 @@ func TestGetBalance(t *testing.T) {
 			clearDatabase(server)
 		})
 
-		request, response := createHttpRequestAndResponse(http.MethodGet, "/accounts/10000/balance", nil)
+		// FIXME: Should use a number that doesnt exist. Not this hardcoded magic number!
+		request, response := createHttpRequestAndResponse(http.MethodGet, fmt.Sprintf("/accounts/%d/balance", 31039813098), nil)
 		server.ReadAccountBalance(response, request)
 
 		assertStatusCode(t, response, http.StatusNotFound)
@@ -238,7 +253,7 @@ func TestCreateAccount(t *testing.T) {
 		}
 		jsonInput, err := json.Marshal(input)
 		if err != nil {
-			t.Errorf("Error while converting CreateAccountInputDTO to json. err: %v", err)
+			t.Errorf("Error while converting CreateAccountInputDTO to json. Err: %v", err)
 			return
 		}
 
@@ -246,7 +261,11 @@ func TestCreateAccount(t *testing.T) {
 		request, response := createHttpRequestAndResponse(http.MethodPost, "/accounts", bytes.NewBuffer(jsonInput))
 		server.CreateAccount(response, request)
 
-		persistedAccounts := AccountService.Repo.ReadAll()
+		persistedAccounts, err := AccountService.Repo.ReadAll()
+		if err != nil {
+			t.Errorf("Cannot find accounts. Err: %v", err)
+			return
+		}
 
 		if len(persistedAccounts) != 1 {
 			t.Errorf("Account was not created! Expected accounts length to be == 1, but it is: %d", len(persistedAccounts))
@@ -282,7 +301,7 @@ func TestLogin(t *testing.T) {
 
 		inputDTO := dto.LoginInputDTO{
 			CPF:    mockedAccount.CPF,
-			Secret: mockedAccount.Secret,
+			Secret: MOCKED_SECRET,
 		}
 
 		input, marshalErr := json.Marshal(inputDTO)

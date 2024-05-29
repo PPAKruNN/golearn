@@ -17,6 +17,12 @@ CREATE TABLE IF NOT EXISTS "Account" (
 	PRIMARY KEY ("id")
 );
 
+CREATE TABLE IF NOT EXISTS "Auth" (
+	"id" bigint NOT NULL UNIQUE,
+  "token" uuid NOT NULL,
+	PRIMARY KEY ("id")
+);
+
 ALTER TABLE "Transfer" ADD CONSTRAINT "Transfer_fk1" FOREIGN KEY ("account_origin_id") REFERENCES "Account"("id");
 
 ALTER TABLE "Transfer" ADD CONSTRAINT "Transfer_fk2" FOREIGN KEY ("account_destination_id") REFERENCES "Account"("id");

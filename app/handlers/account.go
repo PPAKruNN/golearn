@@ -83,6 +83,26 @@ func (s *AccountServer) ReadAccountBalance(w http.ResponseWriter, r *http.Reques
 	var id int
 	fmt.Sscanf(r.URL.Path, "/accounts/%d/balance", &id)
 
+	// Getting ID
+	// var id int
+	// rawId := r.PathValue("id")
+	// parsedInt, err := strconv.Atoi(rawId)
+	//
+	// if err != nil {
+	// 	w.WriteHeader(http.StatusUnprocessableEntity)
+	// 	log.Info().
+	// 		Err(err).
+	// 		Str("Method", r.Method).
+	// 		Str("Path", r.URL.String()).
+	// 		Int("Status Code", http.StatusUnprocessableEntity).
+	// 		Int("id", id).
+	// 		Str("rawId", rawId).
+	// 		Msg("Couldn't read the id from request")
+	//
+	// 	return
+	// }
+
+	// r.Context()
 	input := dto.ReadAccountBalanceInputDTO{
 		ID: id,
 	}
@@ -130,7 +150,7 @@ func (s *AccountServer) CreateAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.AccountService.CreateAccount(accountDTO)
+	_, err = s.AccountService.CreateAccount(accountDTO)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Error().

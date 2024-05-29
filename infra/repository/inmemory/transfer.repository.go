@@ -1,6 +1,7 @@
 package inmemory
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/PPAKruNN/golearn/domain/entity"
@@ -33,6 +34,8 @@ func (r *TransferRepository) ReadTransfersByAccountID(id int) []entity.Transfer 
 
 func (r *TransferRepository) CreateTransfer(accountOriginID, destinationOriginID, amount int) *entity.Transfer {
 
+	fmt.Print(accountOriginID, destinationOriginID, amount)
+
 	transfer := entity.Transfer{
 		ID:                   len(r.Transfers),
 		AccountOriginID:      accountOriginID,
@@ -40,8 +43,12 @@ func (r *TransferRepository) CreateTransfer(accountOriginID, destinationOriginID
 		Amount:               amount,
 		CreatedAt:            time.Now().UTC(),
 	}
+
 	// Falta verificar se é valido tbm
-	transfer.IsValid()
+	_, err := transfer.IsValid()
+	if err != nil {
+		return nil
+	}
 
 	r.Transfers = append(r.Transfers, transfer)
 

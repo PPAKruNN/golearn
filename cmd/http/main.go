@@ -4,13 +4,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
-	"path"
 
 	"github.com/PPAKruNN/golearn/app/handlers"
 	"github.com/PPAKruNN/golearn/domain/service"
 	"github.com/PPAKruNN/golearn/infra/repository/database"
-	"github.com/PPAKruNN/golearn/infra/repository/indisk"
 	"github.com/rs/zerolog"
 	logger "github.com/rs/zerolog/log"
 )
@@ -21,19 +18,15 @@ const (
 
 func main() {
 
-	// Placing json files into folder database on current directory.
-	CURR_DIR, err := os.Getwd()
-	DATABASE_DIR := path.Join(CURR_DIR, "database")
-	os.Mkdir(DATABASE_DIR, 0755)
-
-	if err != nil {
-		panic("Error while getting current directory.")
-	}
-
 	// Repository instances
-	transferRepo := indisk.NewTransferRepository(DATABASE_DIR)
+	transferRepo := database.NewTransferRepository()
+	fmt.Print("\nTransferrepo\n")
+
 	accountRepo := database.NewAccountRepository()
-	authRepo := indisk.NewAuthRepository(DATABASE_DIR)
+	fmt.Print("\naccountRepo\n")
+
+	authRepo := database.NewAuthRepository()
+	fmt.Print("\nAuthRepo\n")
 
 	// Services instances
 	transferService := *service.NewTransferService(transferRepo, accountRepo)
@@ -55,5 +48,4 @@ func main() {
 	logger.Info().Msg(fmt.Sprintf("Running server on port %s", PORT))
 
 	log.Fatal(http.ListenAndServe(PORT, router))
-
 }
